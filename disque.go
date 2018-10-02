@@ -56,6 +56,66 @@ func (p *Pool) Add(q, job string, t time.Duration, o *AddOptions) (string, error
 	}
 }
 
+type GetOptions struct {
+	Count        uint          `redis:"COUNT,omitempty"`
+	NoHang       bool          `redis:"-"`
+	Timeout      time.Duration `redis:"-"`
+	WithCounters bool          `redis:"-"`
+}
+
+type Job struct {
+	Queue, ID, Body             string
+	Nacks, AdditionalDeliveries int64
+}
+
+func (p *Pool) Get(o *GetOptions, q ...string) ([]Job, error) {
+	args := redis.Args{}.AddFlat(o)
+
+	if o != nil {
+		if o.NoHang {
+			args = append(args, "NOHANG")
+		}
+
+		if o.Timeout >= time.Millisecond {
+			args = append(args, "TIMEOUT", int64(o.Timeout/time.Millisecond))
+		}
+
+		if o.WithCounters {
+			args = append(args, "WITHCOUNTERS")
+		}
+	}
+
+	args = args.Add("FROM").AddFlat(q)
+
+	conn := p.Pool.Get()
+	defer conn.Close()
+
+	var jobs []Job
+
+	reply, err := conn.Do("GETJOB", args...)
+
+	if rows, ok := reply.([]interface{}); ok {
+		for _, row := range rows {
+			data := row.([]interface{})
+
+			job := Job{
+				Queue: string(data[0].([]byte)),
+				ID:    string(data[1].([]byte)),
+				Body:  string(data[2].([]byte)),
+			}
+
+			if o != nil && o.WithCounters {
+				job.Nacks = data[4].(int64)
+				job.AdditionalDeliveries = data[6].(int64)
+			}
+
+			jobs = append(jobs, job)
+		}
+	}
+
+	return jobs, err
+}
+
 func (p *Pool) Ping() (string, error) {
 	conn := p.Pool.Get()
 	defer conn.Close()

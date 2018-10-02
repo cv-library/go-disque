@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"os/exec"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -76,6 +77,51 @@ func TestAddNotEnoughReachableNodes(t *testing.T) {
 		"foo", "bar", time.Second, &AddOptions{Replicate: 2},
 	); err == nil || err.Error() != exp {
 		t.Errorf("Error was incorrect, got: %s, want: %s.", err, exp)
+	}
+}
+
+func TestGet(t *testing.T) {
+	pool.flush()
+
+	exp := []Job{{Queue: "foo", Body: "bar"}}
+
+	exp[0].ID, _ = pool.Add("foo", "bar", time.Second, nil)
+
+	if jobs, err := pool.Get(&GetOptions{NoHang: true}, "foo"); err != nil {
+		t.Fatal(err)
+	} else if !reflect.DeepEqual(jobs, exp) {
+		t.Errorf("Get was incorrect, got: %#v, want: %#v.", jobs, exp)
+	}
+}
+
+func TestGetMultiWithCounters(t *testing.T) {
+	pool.flush()
+
+	exp := []Job{{Queue: "foo", Body: "bar"}, {Queue: "foo", Body: "baz"}}
+
+	exp[0].ID, _ = pool.Add("foo", "bar", time.Second, nil)
+	exp[1].ID, _ = pool.Add("foo", "baz", time.Second, nil)
+
+	if jobs, err := pool.Get(&GetOptions{2, true, time.Second, true}, "foo"); err != nil {
+		t.Fatal(err)
+	} else if !reflect.DeepEqual(jobs, exp) {
+		t.Errorf("Get was incorrect, got: %#v, want: %#v.", jobs, exp)
+	}
+}
+
+func TestGetNoQueue(t *testing.T) {
+	exp := "ERR syntax error"
+
+	if _, err := pool.Get(nil); err == nil || err.Error() != exp {
+		t.Errorf("Error was incorrect, got: %s, want: %s.", err, exp)
+	}
+}
+
+func TestGetEmpty(t *testing.T) {
+	pool.flush()
+
+	if _, err := pool.Get(&GetOptions{NoHang: true}, "foo"); err != nil {
+		t.Fatal(err)
 	}
 }
 
