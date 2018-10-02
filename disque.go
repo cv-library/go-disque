@@ -136,11 +136,7 @@ func (p *Pool) Ping() (string, error) {
 	conn := p.Pool.Get()
 	defer conn.Close()
 
-	if reply, err := conn.Do("PING"); err != nil {
-		return "", err
-	} else {
-		return reply.(string), nil
-	}
+	return redis.String(conn.Do("PING"))
 }
 
 // Private method used in testing.
