@@ -36,6 +36,12 @@ func TestMain(m *testing.M) {
 	os.Exit(status)
 }
 
+func TestAck(t *testing.T) {
+	if err := pool.Ack(Job{ID: "D-49a4ad3b-fCAnZ8eFxSxKyl5fX58KCrGM-05a1"}); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestAdd(t *testing.T) {
 	pool.flush()
 
@@ -137,9 +143,13 @@ func TestLen(t *testing.T) {
 	}
 }
 
-func TestPing(t *testing.T) {
-	pool.flush()
+func TestNack(t *testing.T) {
+	if err := pool.Nack(Job{ID: "D-49a4ad3b-fCAnZ8eFxSxKyl5fX58KCrGM-05a1"}); err != nil {
+		t.Fatal(err)
+	}
+}
 
+func TestPing(t *testing.T) {
 	if got, err := pool.Ping(); err != nil {
 		t.Fatal(err)
 	} else if got != "PONG" {
