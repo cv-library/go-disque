@@ -69,11 +69,7 @@ func (p *Pool) Add(q, job string, t time.Duration, o *AddOptions) (string, error
 	conn := p.Pool.Get()
 	defer conn.Close()
 
-	if reply, err := conn.Do("ADDJOB", args...); err != nil {
-		return "", err
-	} else {
-		return reply.(string), nil
-	}
+	return redis.String(conn.Do("ADDJOB", args...))
 }
 
 func (p *Pool) Get(o *GetOptions, q ...string) ([]Job, error) {
