@@ -152,5 +152,5 @@ func (p *Pool) flush() {
 	conn := p.Pool.Get()
 	defer conn.Close()
 
-	conn.Do("DEBUG", "FLUSHALL")
+	conn.Send("DEBUG", "FLUSHALL")
 }
