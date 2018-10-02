@@ -168,6 +168,42 @@ func (p *Pool) Ping() (string, error) {
 	return redis.String(conn.Do("PING"))
 }
 
+func (p *Pool) Stat(queue string) (map[string]interface{}, error) {
+	conn := p.Pool.Get()
+	defer conn.Close()
+
+	reply, err := conn.Do("QSTAT", queue)
+	if err != nil {
+		return nil, err
+	}
+
+	values, ok := reply.([]interface{})
+	if !ok {
+		return nil, nil
+	}
+
+	stat := make(map[string]interface{}, len(values)/2)
+	for i := 0; i < len(values); i += 2 {
+		key := string(values[i].([]byte))
+
+		switch value := values[i+1]; value.(type) {
+		case []byte:
+			stat[key] = string(value.([]byte))
+		case []interface{}:
+			values := value.([]interface{})
+			newValues := make([]string, len(values))
+			for i, v := range values {
+				newValues[i] = string(v.([]byte))
+			}
+			stat[key] = newValues
+		case int64:
+			stat[key] = value.(int64)
+		}
+	}
+
+	return stat, err
+}
+
 func (p *Pool) Working(job Job) (time.Duration, error) {
 	conn := p.Pool.Get()
 	defer conn.Close()

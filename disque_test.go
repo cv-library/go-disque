@@ -163,6 +163,39 @@ func TestPing(t *testing.T) {
 	}
 }
 
+func TestStat(t *testing.T) {
+	pool.flush()
+
+	pool.Add("foo", "bar", time.Second, nil)
+
+	exp := map[string]interface{}{
+		"age":         int64(0),
+		"blocked":     int64(0),
+		"idle":        int64(0),
+		"import-from": []string{},
+		"import-rate": int64(0),
+		"jobs-in":     int64(1),
+		"jobs-out":    int64(0),
+		"len":         int64(1),
+		"name":        "foo",
+		"pause":       "none",
+	}
+
+	if stat, err := pool.Stat("foo"); err != nil {
+		t.Fatal(err)
+	} else if !reflect.DeepEqual(stat, exp) {
+		t.Errorf("Stat was incorrect, got: %#v, want: %#v.", stat, exp)
+	}
+}
+
+func TestStatNonExistentQueue(t *testing.T) {
+	if stat, err := pool.Stat("non-existent-queue"); err != nil {
+		t.Fatal(err)
+	} else if stat != nil {
+		t.Errorf("Stat was incorrect, got: %#v, want: %#v.", stat, nil)
+	}
+}
+
 func TestWorking(t *testing.T) {
 	pool.flush()
 
