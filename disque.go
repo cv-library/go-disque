@@ -124,6 +124,13 @@ func (p *Pool) Get(o *GetOptions, q ...string) ([]Job, error) {
 	return jobs, err
 }
 
+func (p *Pool) Len(queue string) (int, error) {
+	conn := p.Pool.Get()
+	defer conn.Close()
+
+	return redis.Int(conn.Do("QLEN", queue))
+}
+
 func (p *Pool) Nack(job Job) error {
 	conn := p.Pool.Get()
 	defer conn.Close()

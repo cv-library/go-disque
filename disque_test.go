@@ -125,6 +125,18 @@ func TestGetEmpty(t *testing.T) {
 	}
 }
 
+func TestLen(t *testing.T) {
+	pool.flush()
+
+	pool.Add("foo", "bar", time.Second, nil)
+
+	if got, err := pool.Len("foo"); err != nil {
+		t.Fatal(err)
+	} else if got != 1 {
+		t.Errorf("Len was incorrect, got: %d, want: %d.", got, 1)
+	}
+}
+
 func TestPing(t *testing.T) {
 	pool.flush()
 
