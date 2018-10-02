@@ -6,6 +6,26 @@ import (
 	"github.com/gomodule/redigo/redis"
 )
 
+type AddOptions struct {
+	Async     bool          `redis:"-"`
+	Delay     time.Duration `redis:"-"`
+	MaxLen    uint          `redis:"MAXLEN,omitempty"`
+	Replicate uint16        `redis:"REPLICATE,omitempty"`
+	TTL       time.Duration `redis:"-"`
+}
+
+type GetOptions struct {
+	Count        uint          `redis:"COUNT,omitempty"`
+	NoHang       bool          `redis:"-"`
+	Timeout      time.Duration `redis:"-"`
+	WithCounters bool          `redis:"-"`
+}
+
+type Job struct {
+	Queue, ID, Body             string
+	Nacks, AdditionalDeliveries int64
+}
+
 type Pool struct{ redis.Pool }
 
 func New(addr string) *Pool {
@@ -18,12 +38,12 @@ func New(addr string) *Pool {
 	}
 }
 
-type AddOptions struct {
-	Async     bool          `redis:"-"`
-	Delay     time.Duration `redis:"-"`
-	MaxLen    uint          `redis:"MAXLEN,omitempty"`
-	Replicate uint16        `redis:"REPLICATE,omitempty"`
-	TTL       time.Duration `redis:"-"`
+func (p *Pool) Ack(job Job) error {
+	conn := p.Pool.Get()
+	defer conn.Close()
+
+	_, err := conn.Do("ACKJOB", job.ID)
+	return err
 }
 
 func (p *Pool) Add(q, job string, t time.Duration, o *AddOptions) (string, error) {
@@ -54,18 +74,6 @@ func (p *Pool) Add(q, job string, t time.Duration, o *AddOptions) (string, error
 	} else {
 		return reply.(string), nil
 	}
-}
-
-type GetOptions struct {
-	Count        uint          `redis:"COUNT,omitempty"`
-	NoHang       bool          `redis:"-"`
-	Timeout      time.Duration `redis:"-"`
-	WithCounters bool          `redis:"-"`
-}
-
-type Job struct {
-	Queue, ID, Body             string
-	Nacks, AdditionalDeliveries int64
 }
 
 func (p *Pool) Get(o *GetOptions, q ...string) ([]Job, error) {
@@ -114,6 +122,14 @@ func (p *Pool) Get(o *GetOptions, q ...string) ([]Job, error) {
 	}
 
 	return jobs, err
+}
+
+func (p *Pool) Nack(job Job) error {
+	conn := p.Pool.Get()
+	defer conn.Close()
+
+	_, err := conn.Do("NACK", job.ID)
+	return err
 }
 
 func (p *Pool) Ping() (string, error) {
