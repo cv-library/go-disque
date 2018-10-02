@@ -38,12 +38,16 @@ func New(addr string) *Pool {
 	}
 }
 
-func (p *Pool) Ack(job Job) error {
+func (p *Pool) Ack(jobs ...Job) error {
+	ids := make([]interface{}, len(jobs))
+	for i, job := range jobs {
+		ids[i] = job.ID
+	}
+
 	conn := p.Pool.Get()
 	defer conn.Close()
 
-	_, err := conn.Do("ACKJOB", job.ID)
-	return err
+	return conn.Send("ACKJOB", ids...)
 }
 
 func (p *Pool) Add(q, job string, t time.Duration, o *AddOptions) (string, error) {
@@ -70,6 +74,18 @@ func (p *Pool) Add(q, job string, t time.Duration, o *AddOptions) (string, error
 	defer conn.Close()
 
 	return redis.String(conn.Do("ADDJOB", args...))
+}
+
+func (p *Pool) FastAck(jobs ...Job) error {
+	ids := make([]interface{}, len(jobs))
+	for i, job := range jobs {
+		ids[i] = job.ID
+	}
+
+	conn := p.Pool.Get()
+	defer conn.Close()
+
+	return conn.Send("FASTACK", ids...)
 }
 
 func (p *Pool) Get(o *GetOptions, q ...string) ([]Job, error) {
@@ -127,12 +143,16 @@ func (p *Pool) Len(queue string) (int, error) {
 	return redis.Int(conn.Do("QLEN", queue))
 }
 
-func (p *Pool) Nack(job Job) error {
+func (p *Pool) Nack(jobs ...Job) error {
+	ids := make([]interface{}, len(jobs))
+	for i, job := range jobs {
+		ids[i] = job.ID
+	}
+
 	conn := p.Pool.Get()
 	defer conn.Close()
 
-	_, err := conn.Do("NACK", job.ID)
-	return err
+	return conn.Send("NACK", ids...)
 }
 
 func (p *Pool) Ping() (string, error) {

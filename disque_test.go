@@ -86,6 +86,12 @@ func TestAddNotEnoughReachableNodes(t *testing.T) {
 	}
 }
 
+func TestFastAck(t *testing.T) {
+	if err := pool.FastAck(Job{ID: "D-49a4ad3b-fCAnZ8eFxSxKyl5fX58KCrGM-05a1"}); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestGet(t *testing.T) {
 	pool.flush()
 
