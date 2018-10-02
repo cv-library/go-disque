@@ -11,6 +11,7 @@ type AddOptions struct {
 	Delay     time.Duration `redis:"-"`
 	MaxLen    uint          `redis:"MAXLEN,omitempty"`
 	Replicate uint16        `redis:"REPLICATE,omitempty"`
+	Retry     time.Duration `redis:"-"`
 	TTL       time.Duration `redis:"-"`
 }
 
@@ -62,6 +63,11 @@ func (p *Pool) Add(q, job string, t time.Duration, o *AddOptions) (string, error
 		if o.Delay >= time.Second {
 			// Convert DELAY to seconds.
 			args = append(args, "DELAY", int64(o.Delay/time.Second))
+		}
+
+		if o.Retry >= time.Second {
+			// Convert Retry to seconds.
+			args = append(args, "RETRY", int64(o.Retry/time.Second))
 		}
 
 		if o.TTL >= time.Second {
@@ -160,6 +166,15 @@ func (p *Pool) Ping() (string, error) {
 	defer conn.Close()
 
 	return redis.String(conn.Do("PING"))
+}
+
+func (p *Pool) Working(job Job) (time.Duration, error) {
+	conn := p.Pool.Get()
+	defer conn.Close()
+
+	seconds, err := redis.Int(conn.Do("WORKING", job.ID))
+
+	return time.Second * time.Duration(seconds), err
 }
 
 // Private method used in testing.

@@ -53,7 +53,7 @@ func TestAdd(t *testing.T) {
 		"foo",
 		"bar",
 		time.Second,
-		&AddOptions{true, time.Minute, 9, 1, time.Hour},
+		&AddOptions{true, time.Second, 9, 1, time.Minute, time.Hour},
 	); err != nil {
 		t.Fatal(err)
 	}
@@ -160,5 +160,20 @@ func TestPing(t *testing.T) {
 		t.Fatal(err)
 	} else if got != "PONG" {
 		t.Errorf("Ping was incorrect, got: %s, want: %s.", got, "PONG")
+	}
+}
+
+func TestWorking(t *testing.T) {
+	pool.flush()
+
+	exp := time.Minute
+
+	job := Job{}
+	job.ID, _ = pool.Add("foo", "bar", time.Second, &AddOptions{Retry: exp})
+
+	if got, err := pool.Working(job); err != nil {
+		t.Fatal(err)
+	} else if got != exp {
+		t.Errorf("Working was incorrect, got: %q, want: %q.", got, exp)
 	}
 }
