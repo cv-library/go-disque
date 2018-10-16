@@ -32,10 +32,9 @@ type Pool struct{ redis.Pool }
 func New(addr string, idleTimeout time.Duration) *Pool {
 	return &Pool{
 		redis.Pool{
-			Dial:         func() (redis.Conn, error) { return redis.Dial("tcp", addr) },
-			IdleTimeout:  idleTimeout,
-			MaxIdle:      3,
-			TestOnBorrow: func(c redis.Conn, _ time.Time) error { return c.Send("PING") },
+			Dial:        func() (redis.Conn, error) { return redis.Dial("tcp", addr) },
+			IdleTimeout: idleTimeout,
+			MaxIdle:     3,
 		},
 	}
 }
