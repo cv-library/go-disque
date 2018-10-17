@@ -23,7 +23,7 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 
-	pool = New("127.0.0.1:7711")
+	pool = New("127.0.0.1:7711", 240*time.Second)
 
 	status := m.Run()
 
