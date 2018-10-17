@@ -1,6 +1,7 @@
 package disque
 
 import (
+	"io"
 	"time"
 
 	"github.com/gomodule/redigo/redis"
@@ -76,10 +77,31 @@ func (p *Pool) Add(q, job string, t time.Duration, o *AddOptions) (string, error
 		}
 	}
 
+	// this is not perfect, it would be better
+	// if we could move this sort of thing lower down.
+	allowRetries := p.Pool.IdleCount() > 0
 	conn := p.Pool.Get()
 	defer conn.Close()
 
-	return redis.String(conn.Do("ADDJOB", args...))
+	var reply interface{}
+	var err error
+	giveTry := true
+	// allow retries because pool connections might be dead
+	// and just unaware of the fact.
+	for giveTry {
+		reply, err = conn.Do("ADDJOB", args...)
+		if err == nil || err != io.EOF || !allowRetries {
+			break
+		}
+		// this is a bit tortured because we want this
+		// the allowRetries to take effect half way
+		// round the next loop.
+		giveTry = allowRetries
+		allowRetries = p.Pool.IdleCount() > 0
+		conn = p.Pool.Get()
+		defer conn.Close()
+	}
+	return redis.String(reply, err)
 }
 
 func (p *Pool) FastAck(jobs ...Job) error {
