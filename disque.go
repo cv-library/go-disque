@@ -1,6 +1,7 @@
 package disque
 
 import (
+	"io"
 	"time"
 
 	"github.com/gomodule/redigo/redis"
@@ -76,10 +77,30 @@ func (p *Pool) Add(q, job string, t time.Duration, o *AddOptions) (string, error
 		}
 	}
 
+	// this is so flawed...
+	idle := 0
+	previous_idle := p.Pool.IdleCount()
 	conn := p.Pool.Get()
 	defer conn.Close()
+	if previous_idle > 0 {
+		current_idle := p.Pool.IdleCount()
+		if current_idle < previous_idle {
+			// currently idle connections plus the one we presumably used.
+			idle = current_idle + 1
+		}
+	}
 
-	return redis.String(conn.Do("ADDJOB", args...))
+	var r string
+	var err error
+	// allow retries because pool connections might be dead
+	// and just unaware of the fact.
+	for i := 0; i < idle; i++ {
+		r, err = redis.String(conn.Do("ADDJOB", args...))
+		if err == nil || err != io.EOF {
+			break
+		}
+	}
+	return r, err
 }
 
 func (p *Pool) FastAck(jobs ...Job) error {
